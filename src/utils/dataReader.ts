@@ -2,9 +2,19 @@ import * as XLSX from 'xlsx';
 
 export async function readSheet<T>(url: string, sheetName: string): Promise<T[]> {
   const res = await fetch(url);
+  
+  if (!res.ok) {
+    throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
+  }
+  
   const buf = await res.arrayBuffer();
   const workbook = XLSX.read(buf, { type: 'array' });
   const sheet = workbook.Sheets[sheetName];
+  
+  if (!sheet) {
+    throw new Error(`Sheet "${sheetName}" not found in ${url}`);
+  }
+  
   return XLSX.utils.sheet_to_json<T>(sheet, { defval: null });
 }
 
