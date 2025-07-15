@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, BarChart3, Globe, Users, TreePine, Brain, ChevronLeft } from 'lucide-react';
+import { Home, BarChart3, Globe, Users, TreePine, Brain, ChevronLeft, HeartPulse } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -11,10 +11,12 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, activeTab, onTabChange }) => {
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: Home },
-    { id: 'grants', label: 'Grants', icon: BarChart3 },
+    { id: 'grants-old', label: 'Analytics', icon: BarChart3 },
     { id: 'geography', label: 'Geography', icon: Globe },
     { id: 'demographics', label: 'Demographics', icon: Users },
-    { id: 'trees', label: 'Trees', icon: TreePine },
+    { id: 'grants', label: 'Grants', icon: BarChart3 },
+    { id: 'lives-impacted', label: 'Lives Impacted', icon: HeartPulse },
+    { id: 'trees-planted', label: 'Trees Planted', icon: TreePine },
     { id: 'ai-insights', label: 'AI Insights', icon: Brain },
   ];
 
