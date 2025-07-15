@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
 import { Filter, ChevronDown } from 'lucide-react';
 
 interface FilterDropdownProps {
@@ -64,6 +65,8 @@ function getImpactLevel(val: number): 'low' | 'medium' | 'high' {
   if (val < 30000) return 'medium';
   return 'high';
 }
+
+const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 const WorldMap: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState('All');
@@ -139,6 +142,16 @@ const WorldMap: React.FC = () => {
   const pillars = Array.from(new Set(griData.map(item => item.strategic_pillar).filter(Boolean))).sort();
   const focusAreas = Array.from(new Set(griData.map(item => item.focus_area).filter(Boolean))).sort();
 
+  // Color and size mapping for impact levels
+  const getMarkerProps = (level: 'low' | 'medium' | 'high') => {
+    const props = {
+      low: { fill: '#60a5fa', r: 4 },
+      medium: { fill: '#3b82f6', r: 6 },
+      high: { fill: '#1d4ed8', r: 8 }
+    };
+    return props[level];
+  };
+
   if (loading) {
     return (
       <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-gray-200/50 shadow-sm">
@@ -151,6 +164,12 @@ const WorldMap: React.FC = () => {
 
   return (
     <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-gray-200/50 shadow-sm">
+      {/* Header */}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">Global Impact Map</h3>
+        <p className="text-sm text-gray-600">Visualizing lives impacted across countries and regions</p>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap gap-4 mb-6">
         <div className="flex items-center space-x-2">
@@ -179,88 +198,69 @@ const WorldMap: React.FC = () => {
 
       {/* Map Container */}
       <div className="relative h-96 bg-gradient-to-br from-blue-50 to-green-50 rounded-xl overflow-hidden">
-        {/* World Map Background with SVG */}
-        <svg viewBox="0 0 1000 500" className="w-full h-full absolute inset-0">
-          {/* World map continents - simplified paths */}
-          <g fill="#e5e7eb" opacity="0.4" stroke="#d1d5db" strokeWidth="0.5">
-            {/* North America */}
-            <path d="M100 80 L180 60 L220 70 L280 90 L320 110 L340 140 L320 180 L280 200 L240 190 L200 170 L160 150 L120 130 Z" />
-            
-            {/* South America */}
-            <path d="M240 220 L280 210 L300 230 L320 270 L340 320 L350 370 L330 410 L300 430 L270 420 L250 390 L230 350 L220 300 L230 260 Z" />
-            
-            {/* Europe */}
-            <path d="M450 60 L500 50 L530 60 L550 80 L540 110 L520 120 L490 110 L470 90 Z" />
-            
-            {/* Africa */}
-            <path d="M480 130 L520 120 L550 130 L570 160 L580 200 L590 250 L580 300 L560 340 L530 360 L500 350 L480 320 L470 280 L460 240 L465 200 L470 160 Z" />
-            
-            {/* Asia */}
-            <path d="M550 40 L650 30 L750 35 L820 50 L880 70 L900 100 L920 140 L910 180 L890 210 L850 230 L800 240 L750 230 L700 210 L650 190 L600 170 L570 150 L560 120 L555 80 Z" />
-            
-            {/* Australia */}
-            <path d="M750 300 L800 290 L840 300 L860 320 L850 350 L820 360 L780 355 L760 340 Z" />
-            
-            {/* Antarctica */}
-            <path d="M100 450 L900 450 L900 480 L100 480 Z" />
-          </g>
+        <ComposableMap
+          projection="geoMercator"
+          projectionConfig={{
+            scale: 120,
+            center: [0, 20]
+          }}
+          width={800}
+          height={400}
+          className="w-full h-full"
+        >
+          <Geographies geography={geoUrl}>
+            {({ geographies }: { geographies: any[] }) =>
+              geographies.map((geo) => (
+                <Geography
+                  key={geo.rsmKey}
+                  geography={geo}
+                  fill="#e5e7eb"
+                  stroke="#d1d5db"
+                  strokeWidth={0.5}
+                  className="hover:fill-gray-300 transition-colors"
+                />
+              ))
+            }
+          </Geographies>
           
-          {/* Grid lines for reference */}
-          <defs>
-            <pattern id="grid" width="50" height="25" patternUnits="userSpaceOnUse">
-              <path d="M 50 0 L 0 0 0 25" fill="none" stroke="#f3f4f6" strokeWidth="0.5" opacity="0.3"/>
-            </pattern>
-          </defs>
-          <rect width="1000" height="500" fill="url(#grid)" />
-        </svg>
+          {/* Country Impact Markers */}
+          {countryImpacts.map((impact) => {
+            const markerProps = getMarkerProps(impact.level);
+            
+            return (
+              <Marker
+                key={impact.country}
+                coordinates={impact.coordinates}
+                onMouseEnter={() => setHoveredCountry(impact.country)}
+                onMouseLeave={() => setHoveredCountry(null)}
+              >
+                <circle
+                  {...markerProps}
+                  className="cursor-pointer transition-all hover:scale-125 animate-pulse"
+                  style={{
+                    filter: `drop-shadow(0 0 ${markerProps.r}px ${markerProps.fill}40)`,
+                  }}
+                />
+              </Marker>
+            );
+          })}
+        </ComposableMap>
 
-        {/* Country Impact Points */}
-        {countryImpacts.map((impact, index) => {
-          // Convert lat/lng to SVG coordinates
-          const x = ((impact.coordinates[0] + 180) / 360) * 1000;
-          const y = ((90 - impact.coordinates[1]) / 180) * 500;
-          
-          // Size based on impact level
-          const sizeMap = { low: 8, medium: 12, high: 18 };
-          const size = sizeMap[impact.level];
-          
-          // Color based on impact level
-          const colorMap = {
-            low: '#60a5fa',
-            medium: '#3b82f6', 
-            high: '#1d4ed8'
-          };
-          
-          return (
-            <div
-              key={impact.country}
-              className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all hover:scale-125 z-10"
-              style={{ left: `${x}px`, top: `${y}px` }}
-              onMouseEnter={() => setHoveredCountry(impact.country)}
-              onMouseLeave={() => setHoveredCountry(null)}
-            >
-              <div
-                className="rounded-full shadow-lg animate-pulse"
-                style={{
-                  width: `${size}px`,
-                  height: `${size}px`,
-                  backgroundColor: colorMap[impact.level],
-                  boxShadow: `0 0 ${size}px ${colorMap[impact.level]}40`,
-                }}
-              />
-              
-              {/* Tooltip */}
-              {hoveredCountry === impact.country && (
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gray-900 text-white text-sm rounded-lg shadow-xl whitespace-nowrap z-20">
+        {/* Tooltip */}
+        {hoveredCountry && (
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 px-4 py-3 bg-gray-900 text-white text-sm rounded-lg shadow-xl whitespace-nowrap z-20">
+            {(() => {
+              const impact = countryImpacts.find(c => c.country === hoveredCountry);
+              return impact ? (
+                <>
                   <div className="font-semibold text-blue-200">{impact.country}</div>
                   <div className="text-gray-300">Lives Impacted: {Math.round(impact.totalImpact).toLocaleString()}</div>
                   <div className="text-gray-400 text-xs">Impact Level: {impact.level}</div>
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
-                </div>
-              )}
-            </div>
-          );
-        })}
+                </>
+              ) : null;
+            })()}
+          </div>
+        )}
 
         {/* Legend */}
         <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50 shadow-lg">
@@ -268,15 +268,15 @@ const WorldMap: React.FC = () => {
           <div className="space-y-2">
             <div className="flex items-center space-x-3">
               <div className="w-3 h-3 rounded-full bg-blue-400" />
-              <span className="text-xs text-gray-600">Low (&lt;10K)</span>
+              <span className="text-xs text-gray-600">Low (<10K)</span>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="w-3 h-3 rounded-full bg-blue-600" />
+              <div className="w-4 h-4 rounded-full bg-blue-600" />
               <span className="text-xs text-gray-600">Medium (10K-30K)</span>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 rounded-full bg-blue-800" />
-              <span className="text-xs text-gray-600">High (&gt;30K)</span>
+              <div className="w-5 h-5 rounded-full bg-blue-800" />
+              <span className="text-xs text-gray-600">High (>30K)</span>
             </div>
           </div>
         </div>
