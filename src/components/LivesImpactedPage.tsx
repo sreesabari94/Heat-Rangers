@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { HeartPulse, Users, TrendingUp } from 'lucide-react';
+import { HeartPulse, Users, TrendingUp, Filter, ChevronDown } from 'lucide-react';
 import { readSheet, GRIData } from '../utils/dataReader';
+import MapImpactView from './MapImpactView';
 
 interface AggregatedData {
   focus_area: string;
@@ -9,9 +10,51 @@ interface AggregatedData {
   percentage: number;
 }
 
+interface FilterDropdownProps {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}
+
+const FilterDropdown: React.FC<FilterDropdownProps> = ({ label, value, options, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center space-x-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-xl border border-gray-200/50 hover:bg-white/80 transition-all"
+      >
+        <span className="text-sm font-medium text-gray-700">{label}: {value}</span>
+        <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="absolute top-full mt-1 w-full bg-white/90 backdrop-blur-md rounded-xl border border-gray-200/50 shadow-lg z-10">
+          {options.map((option) => (
+            <button
+              key={option}
+              onClick={() => {
+                onChange(option);
+                setIsOpen(false);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100/50 first:rounded-t-xl last:rounded-b-xl transition-colors"
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const LivesImpactedPage: React.FC = () => {
   const [data, setData] = useState<GRIData[]>([]);
   const [aggregatedData, setAggregatedData] = useState<AggregatedData[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string>('All');
+  const [selectedFocusArea, setSelectedFocusArea] = useState<string>('All');
+  const [selectedPillar, setSelectedPillar] = useState<string>('All');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +99,10 @@ const LivesImpactedPage: React.FC = () => {
 
     loadData();
   }, []);
+
+  const years = Array.from(new Set(data.map(item => String(item.GRI_year)))).sort();
+  const focusAreas = Array.from(new Set(data.map(item => item.focus_area).filter(Boolean))).sort();
+  const pillars = Array.from(new Set(data.map(item => item.strategic_pillar).filter(Boolean))).sort();
 
   const totalLives = aggregatedData.reduce((sum, item) => sum + item.total_lives, 0);
   const maxLives = Math.max(...aggregatedData.map(item => item.total_lives));
@@ -138,6 +185,42 @@ const LivesImpactedPage: React.FC = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Filters */}
+      <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-gray-200/50">
+        <div className="flex items-center space-x-4 mb-4">
+          <Filter className="w-5 h-5 text-gray-500" />
+          <h3 className="text-lg font-semibold text-gray-800">Filters</h3>
+        </div>
+        
+        <div className="flex flex-wrap gap-4">
+          <FilterDropdown
+            label="Year"
+            value={selectedYear}
+            options={['All', ...years]}
+            onChange={setSelectedYear}
+          />
+          <FilterDropdown
+            label="Strategic Pillar"
+            value={selectedPillar}
+            options={['All', ...pillars]}
+            onChange={setSelectedPillar}
+          />
+          <FilterDropdown
+            label="Focus Area"
+            value={selectedFocusArea}
+            options={['All', ...focusAreas]}
+            onChange={setSelectedFocusArea}
+          />
+        </div>
+      </div>
+
+      {/* Interactive World Map */}
+      <MapImpactView 
+        selectedYear={selectedYear}
+        selectedFocusArea={selectedFocusArea}
+        selectedPillar={selectedPillar}
+      />
 
       {/* Horizontal Bar Chart */}
       <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-gray-200/50">
